@@ -393,11 +393,108 @@
     text-align: center;
   }
   .toast.show{ opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ---------- Auth gate ---------- */
+  .gate{
+    position: fixed; inset: 0;
+    max-width: 480px; margin: 0 auto;
+    background: var(--bg);
+    z-index: 200;
+    display: flex; flex-direction: column;
+    padding: calc(env(safe-area-inset-top,0px) + 50px) 26px 26px;
+  }
+  .gate-brand{
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 500;
+    font-size: 30px;
+    margin: 0 0 4px;
+  }
+  .gate-tagline{
+    font-size: 13px;
+    color: var(--paper-dim);
+    margin: 0 0 30px;
+  }
+  .gate-toggle{
+    display: flex;
+    border: 1px solid var(--frame-border);
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 22px;
+  }
+  .gate-toggle button{
+    flex: 1;
+    padding: 11px 0;
+    background: var(--bg-raised);
+    color: var(--paper-dim);
+    border: none;
+    font-family: 'Inter', sans-serif;
+    font-size: 13.5px;
+    font-weight: 500;
+  }
+  .gate-toggle button.active{
+    background: var(--safelight);
+    color: var(--paper);
+  }
+  .gate-form .field label{ color: var(--sage); }
+  .gate-error{
+    color: var(--safelight);
+    font-size: 12.5px;
+    margin: -4px 0 12px;
+    display: none;
+  }
+  .gate-error.show{ display: block; }
+  .gate-submit{
+    width: 100%;
+    background: var(--safelight);
+    color: var(--paper);
+    border: none;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 14px;
+    padding: 13px 0;
+    border-radius: 5px;
+    margin-top: 6px;
+  }
+  .gate-submit:disabled{ opacity: 0.6; }
+  .gate-fineprint{
+    font-size: 11px;
+    color: var(--paper-dim);
+    line-height: 1.5;
+    margin-top: 20px;
+  }
+  .account-bar{
+    font-size: 11px;
+    color: var(--paper-dim);
+    padding: 6px 22px 0;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .account-bar button{
+    background: none; border: none;
+    color: var(--sage);
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    padding: 0;
+  }
 </style>
 </head>
 <body>
 
+<div class="gate" id="gate">
+  <p class="gate-brand">Contact Sheet</p>
+  <p class="gate-tagline">Sign in to see your roll, or create an account to get started.</p>
+  <div class="gate-toggle">
+    <button class="active" id="gateTabIn" data-mode="in">Sign in</button>
+    <button id="gateTabUp" data-mode="up">Sign up</button>
+  </div>
+  <div class="gate-form" id="gateForm"></div>
+</div>
+
 <div id="app">
+  <div class="account-bar" id="accountBar" style="display:none;">
+    <span id="accountLabel"></span>
+    <button id="signOutBtn">Sign out</button>
+  </div>
   <header>
     <h1 id="headerTitle">Contact Sheet</h1>
     <p id="headerSub">A running roll of what caught your eye — <span class="count" id="countLabel">0 frames</span></p>
@@ -459,7 +556,12 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+const SUPABASE_URL = 'https://phqystqxtixnkdlulpqy.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_7aY_3zBZM6xUd_GEzu4U_w_Cyb9BYY_';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
 const grid = document.getElementById('grid');
 const emptyState = document.getElementById('emptyState');
 const countLabel = document.getElementById('countLabel');
@@ -477,6 +579,13 @@ const captionArea = document.getElementById('captionArea');
 const toastEl = document.getElementById('toast');
 const headerTitle = document.getElementById('headerTitle');
 const headerSub = document.getElementById('headerSub');
+const gate = document.getElementById('gate');
+const gateForm = document.getElementById('gateForm');
+const gateTabIn = document.getElementById('gateTabIn');
+const gateTabUp = document.getElementById('gateTabUp');
+const accountBar = document.getElementById('accountBar');
+const accountLabel = document.getElementById('accountLabel');
+const signOutBtn = document.getElementById('signOutBtn');
 const rollView = document.getElementById('rollView');
 const auctionsView = document.getElementById('auctionsView');
 const auctionList = document.getElementById('auctionList');
@@ -693,16 +802,130 @@ identifyBtn.addEventListener('click', async () => {
   }
 });
 
-/* ---------------- Display name + zip (shared identity for bidding/selling) ---------------- */
-async function loadDisplayName(){
+/* ---------------- Auth gate: Supabase Auth ---------------- */
+function setGateError(msg){
+  let el = gateForm.querySelector('.gate-error');
+  if (el){ el.textContent = msg; el.classList.toggle('show', !!msg); }
+}
+function setGateNotice(msg){
+  let el = gateForm.querySelector('.gate-error');
+  if (el){ el.textContent = msg; el.classList.toggle('show', !!msg); el.style.color = 'var(--sage)'; }
+}
+
+function renderGateForm(mode){
+  gateTabIn.classList.toggle('active', mode === 'in');
+  gateTabUp.classList.toggle('active', mode === 'up');
+
+  if (mode === 'in'){
+    gateForm.innerHTML = `
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="gateEmail" autocomplete="username">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="gatePass" autocomplete="current-password">
+      </div>
+      <p class="gate-error"></p>
+      <button class="gate-submit" id="gateSubmit">Sign in</button>
+      <p class="gate-fineprint">Accounts are handled by Supabase Auth — real password hashing and sessions, not this app's own code.</p>
+    `;
+    document.getElementById('gateSubmit').addEventListener('click', async () => {
+      const email = document.getElementById('gateEmail').value.trim();
+      const password = document.getElementById('gatePass').value;
+      setGateError('');
+      if (!email || !password){ setGateError('Enter your email and password.'); return; }
+      const btn = document.getElementById('gateSubmit');
+      btn.disabled = true; btn.textContent = 'Signing in…';
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      if (error){ setGateError(error.message); btn.disabled = false; btn.textContent = 'Sign in'; return; }
+      await completeSignIn(data.user);
+    });
+  } else {
+    gateForm.innerHTML = `
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="gateEmail" autocomplete="username">
+      </div>
+      <div class="field">
+        <label>Choose a password</label>
+        <input type="password" id="gatePass" autocomplete="new-password">
+      </div>
+      <div class="field">
+        <label>Display name</label>
+        <input type="text" id="gateName" maxlength="24">
+      </div>
+      <div class="field">
+        <label>Your zip code</label>
+        <input type="text" id="gateZip" maxlength="5" inputmode="numeric">
+      </div>
+      <p class="gate-error"></p>
+      <button class="gate-submit" id="gateSubmit">Create account</button>
+      <p class="gate-fineprint">Accounts are handled by Supabase Auth — real password hashing and sessions, not this app's own code.</p>
+    `;
+    document.getElementById('gateSubmit').addEventListener('click', async () => {
+      const email = document.getElementById('gateEmail').value.trim();
+      const password = document.getElementById('gatePass').value;
+      const name = document.getElementById('gateName').value.trim();
+      const zip = document.getElementById('gateZip').value.trim();
+      setGateError('');
+      if (!email || !password){ setGateError('Enter an email and password.'); return; }
+      if (password.length < 6){ setGateError('Password should be at least 6 characters.'); return; }
+      if (!name){ setGateError('Enter a display name.'); return; }
+      if (!isValidZip(zip)){ setGateError('Enter a valid 5-digit zip.'); return; }
+      const btn = document.getElementById('gateSubmit');
+      btn.disabled = true; btn.textContent = 'Creating…';
+      const { data, error } = await sb.auth.signUp({
+        email, password,
+        options: { data: { displayName: name, zip } }
+      });
+      if (error){ setGateError(error.message); btn.disabled = false; btn.textContent = 'Create account'; return; }
+      if (data.session){
+        await completeSignIn(data.user);
+      } else {
+        setGateNotice('Account created — check your email to confirm, then sign in.');
+        btn.disabled = false; btn.textContent = 'Create account';
+      }
+    });
+  }
+}
+
+gateTabIn.addEventListener('click', () => renderGateForm('in'));
+gateTabUp.addEventListener('click', () => renderGateForm('up'));
+
+async function completeSignIn(user){
+  const meta = user.user_metadata || {};
+  displayName = meta.displayName || (user.email ? user.email.split('@')[0] : 'User');
+  displayZip = meta.zip || '';
+  gate.style.display = 'none';
+  accountBar.style.display = 'flex';
+  accountLabel.textContent = `Signed in as ${displayName}${displayZip ? ' (' + displayZip + ')' : ''}`;
+  await initApp();
+}
+
+signOutBtn.addEventListener('click', async () => {
+  try { await sb.auth.signOut(); } catch(e){ /* ignore */ }
+  displayName = null;
+  displayZip = null;
+  accountBar.style.display = 'none';
+  switchTab('roll');
+  renderGateForm('in');
+  gate.style.display = 'flex';
+});
+
+async function tryResumeSession(){
   try {
-    const res = await window.storage.get('profile:name', false);
-    if (res && res.value) displayName = res.value;
-  } catch(e){ /* not set yet */ }
-  try {
-    const res = await window.storage.get('profile:zip', false);
-    if (res && res.value) displayZip = res.value;
-  } catch(e){ /* not set yet */ }
+    const { data, error } = await sb.auth.getSession();
+    if (error || !data.session) return false;
+    const user = data.session.user;
+    const meta = user.user_metadata || {};
+    displayName = meta.displayName || (user.email ? user.email.split('@')[0] : 'User');
+    displayZip = meta.zip || '';
+    gate.style.display = 'none';
+    accountBar.style.display = 'flex';
+    accountLabel.textContent = `Signed in as ${displayName}${displayZip ? ' (' + displayZip + ')' : ''}`;
+    return true;
+  } catch(e){ return false; }
 }
 
 function isValidZip(z){
@@ -754,44 +977,8 @@ async function calcShipping(fromZip, toZip, weightLbs){
   }
 }
 
-function ensureName(callback){
-  ensureProfile(callback);
-}
-
-function ensureProfile(callback){
-  if (displayName && displayZip){ callback(); return; }
-  openModal(`
-    <h3>Quick setup</h3>
-    <div class="field">
-      <label>Display name</label>
-      <input type="text" id="nameInput" placeholder="e.g. Sam K." maxlength="24" value="${escapeHtml(displayName || '')}">
-    </div>
-    <div class="field">
-      <label>Your zip code</label>
-      <input type="text" id="zipInput" placeholder="e.g. 06095" maxlength="5" inputmode="numeric" value="${escapeHtml(displayZip || '')}">
-    </div>
-    <p class="hint">Used to attribute listings/bids and to estimate shipping distance. Visible to anyone using this app.</p>
-    <div class="modal-actions">
-      <button class="btn-secondary" id="nameCancel">Cancel</button>
-      <button class="btn-primary" id="nameSave">Save</button>
-    </div>
-  `);
-  document.getElementById('nameCancel').addEventListener('click', closeModal);
-  document.getElementById('nameSave').addEventListener('click', async () => {
-    const val = document.getElementById('nameInput').value.trim();
-    const zip = document.getElementById('zipInput').value.trim();
-    if (!val){ showToast('Enter a name first'); return; }
-    if (!isValidZip(zip)){ showToast('Enter a valid 5-digit zip'); return; }
-    displayName = val;
-    displayZip = zip;
-    try {
-      await window.storage.set('profile:name', val, false);
-      await window.storage.set('profile:zip', zip, false);
-    } catch(e){ console.error(e); }
-    closeModal();
-    callback();
-  });
-}
+// Identity (displayName/displayZip) is guaranteed set by the auth gate before
+// initApp() runs, so listing/bidding actions no longer need to prompt for it.
 
 /* ---------------- Modal helpers ---------------- */
 function openModal(html){
@@ -811,7 +998,7 @@ listBtn.addEventListener('click', () => {
   if (!activeId) return;
   const p = photos.find(x => x.id === activeId);
   if (!p) return;
-  ensureName(() => openListModal(p));
+  openListModal(p);
 });
 
 function openListModal(p){
@@ -946,7 +1133,7 @@ function renderAuctions(){
       if (btn.disabled) return;
       const id = btn.getAttribute('data-bid');
       const a = auctions.find(x => x.id === id);
-      if (a) ensureName(() => openBidModal(a));
+      if (a) openBidModal(a);
     });
   });
 }
@@ -1057,12 +1244,22 @@ async function loadAuctions(){
 }
 
 /* ---------------- Boot ---------------- */
-async function boot(){
-  await loadDisplayName();
+async function initApp(){
   await loadPhotos();
   await loadAuctions();
   renderAuctions();
-  tickHandle = setInterval(() => { if (currentTab === 'auctions') renderAuctions(); }, 30000);
+  if (!tickHandle){
+    tickHandle = setInterval(() => { if (currentTab === 'auctions') renderAuctions(); }, 30000);
+  }
+}
+
+async function boot(){
+  renderGateForm('in');
+  const resumed = await tryResumeSession();
+  if (resumed){
+    await initApp();
+  }
+  // otherwise the gate stays visible until sign-in/sign-up completes
 }
 boot();
 </script>
