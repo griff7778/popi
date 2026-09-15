@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Contact Sheet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #17130f;
+    --bg-raised: #221c16;
+    --frame: #2b241c;
+    --frame-border: #3a3226;
+    --paper: #ece3d1;
+    --paper-dim: #b8ac95;
+    --safelight: #c1391a;
+    --safelight-dim: #8a2a13;
+    --sage: #8b9270;
+  }
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body{
+    margin:0; padding:0; height:100%;
+    background: var(--bg);
+    color: var(--paper);
+    font-family: 'Inter', sans-serif;
+    overflow: hidden;
+  }
+  #app{
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    max-width: 480px; margin: 0 auto;
+    background: var(--bg);
+    box-shadow: 0 0 60px rgba(0,0,0,0.6);
+  }
+
+  /* ---------- Header ---------- */
+  header{
+    flex: 0 0 auto;
+    padding: calc(env(safe-area-inset-top, 0px) + 22px) 22px 14px;
+    border-bottom: 1px solid var(--frame-border);
+    background: linear-gradient(180deg, var(--bg-raised), var(--bg));
+  }
+  header h1{
+    margin: 0;
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-style: italic;
+    font-size: 28px;
+    letter-spacing: 0.2px;
+    color: var(--paper);
+  }
+  header p{
+    margin: 4px 0 0;
+    font-size: 12.5px;
+    color: var(--paper-dim);
+  }
+  header .count{
+    color: var(--safelight);
+    font-weight: 600;
+  }
+
+  /* ---------- Views ---------- */
+  main{
+    flex: 1 1 auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px 16px calc(110px + env(safe-area-inset-bottom, 0px));
+  }
+  .view{ display: none; }
+  .view.active{ display: block; }
+
+  .grid{
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 3px;
+  }
+  .frame{
+    position: relative;
+    aspect-ratio: 1 / 1;
+    background: var(--frame);
+    border: 1px solid var(--frame-border);
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .frame img{
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+    filter: saturate(0.92) contrast(1.03);
+  }
+  .frame .num{
+    position: absolute;
+    bottom: 4px; left: 5px;
+    font-size: 10px;
+    color: rgba(236,227,209,0.75);
+    background: rgba(0,0,0,0.35);
+    padding: 1px 4px;
+    border-radius: 2px;
+    letter-spacing: 0.5px;
+  }
+
+  .empty{
+    margin-top: 18vh;
+    text-align: center;
+    padding: 0 30px;
+  }
+  .empty .glyph{
+    font-size: 34px;
+    color: var(--frame-border);
+    margin-bottom: 14px;
+  }
+  .empty p{
+    color: var(--paper-dim);
+    font-size: 14.5px;
+    line-height: 1.55;
+    margin: 0;
+  }
+  .empty .accent{ color: var(--safelight); }
+
+  /* ---------- Auction cards ---------- */
+  .auction-list{ display: flex; flex-direction: column; gap: 12px; }
+  .lot{
+    display: flex;
+    gap: 12px;
+    background: var(--bg-raised);
+    border: 1px solid var(--frame-border);
+    border-radius: 5px;
+    padding: 10px;
+  }
+  .lot img{
+    width: 76px; height: 76px;
+    object-fit: cover;
+    border-radius: 3px;
+    border: 1px solid var(--frame-border);
+    flex: 0 0 auto;
+  }
+  .lot-body{ flex: 1 1 auto; min-width: 0; }
+  .lot-title{
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--paper);
+    margin: 0 0 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .lot-desc{
+    font-size: 12px;
+    color: var(--paper-dim);
+    margin: 0 0 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 1; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .lot-row{
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px;
+  }
+  .lot-bid{ font-size: 13px; }
+  .lot-bid .amt{ color: var(--safelight); font-weight: 700; font-size: 15px; }
+  .lot-meta{ font-size: 10.5px; color: var(--paper-dim); margin-top: 2px; }
+  .lot-ended{ color: var(--sage); }
+  .bid-now-btn{
+    background: var(--safelight);
+    color: var(--paper);
+    border: none;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 12px;
+    padding: 7px 14px;
+    border-radius: 3px;
+    flex: 0 0 auto;
+  }
+  .bid-now-btn:disabled{
+    background: var(--frame-border);
+    color: var(--paper-dim);
+  }
+
+  /* ---------- Shutter button ---------- */
+  .shutter-wrap{
+    position: absolute;
+    left: 0; right: 0;
+    bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .shutter{
+    pointer-events: auto;
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    background: var(--safelight);
+    border: 3px solid rgba(236,227,209,0.9);
+    box-shadow: 0 6px 18px rgba(193,57,26,0.4), 0 2px 4px rgba(0,0,0,0.5);
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.12s ease;
+  }
+  .shutter:active{ transform: scale(0.9); }
+  .shutter svg{ width: 24px; height: 24px; }
+  #fileInput{ display: none; }
+
+  /* ---------- Tab bar ---------- */
+  .tabbar{
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    display: flex;
+    border-top: 1px solid var(--frame-border);
+    background: var(--bg-raised);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .tab{
+    flex: 1;
+    text-align: center;
+    padding: 12px 0 10px;
+    font-size: 12px;
+    color: var(--paper-dim);
+    font-family: 'Inter', sans-serif;
+    background: none; border: none;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+  }
+  .tab .icon{ font-size: 17px; }
+  .tab.active{ color: var(--safelight); }
+
+  /* ---------- Lightbox ---------- */
+  .lightbox{
+    position: fixed; inset: 0;
+    background: rgba(10,8,6,0.97);
+    display: flex; flex-direction: column;
+    z-index: 50;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.18s ease;
+  }
+  .lightbox.open{ opacity: 1; pointer-events: auto; }
+  .lightbox-top{
+    flex: 0 0 auto;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: calc(env(safe-area-inset-top, 0px) + 16px) 18px 12px;
+  }
+  .lightbox-top .meta{ font-size: 12px; color: var(--paper-dim); }
+  .lightbox-top button{
+    background: none; border: none; color: var(--paper);
+    font-size: 15px; font-family: 'Inter', sans-serif;
+    padding: 6px 10px;
+  }
+  .lightbox-img-wrap{
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    padding: 0 10px;
+    overflow: hidden;
+    min-height: 0;
+  }
+  .lightbox-img-wrap img{
+    max-width: 100%; max-height: 100%;
+    object-fit: contain;
+    border: 1px solid var(--frame-border);
+  }
+  .caption-area{
+    flex: 0 0 auto;
+    padding: 10px 22px 0;
+  }
+  .caption-area p{
+    margin: 0 0 6px;
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--paper-dim);
+  }
+  .caption-area .tag-label{
+    font-size: 11px;
+    color: var(--sage);
+    margin: 0 0 4px;
+  }
+  .lightbox-bottom{
+    flex: 0 0 auto;
+    padding: 12px 18px calc(24px + env(safe-area-inset-bottom, 0px));
+    display: flex; justify-content: center; gap: 10px;
+    flex-wrap: wrap;
+  }
+  .delete-btn{
+    background: transparent;
+    border: 1px solid var(--safelight-dim);
+    color: var(--safelight);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    padding: 10px 18px;
+    border-radius: 3px;
+  }
+  .identify-btn{
+    background: var(--sage);
+    border: 1px solid var(--sage);
+    color: #17130f;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 13px;
+    padding: 10px 18px;
+    border-radius: 3px;
+  }
+  .list-btn{
+    background: var(--safelight);
+    border: 1px solid var(--safelight);
+    color: var(--paper);
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 13px;
+    padding: 10px 18px;
+    border-radius: 3px;
+  }
+  .identify-btn:disabled, .list-btn:disabled{ opacity: 0.5; }
+
+  /* ---------- Generic modal ---------- */
+  .modal-overlay{
+    position: fixed; inset: 0;
+    background: rgba(10,8,6,0.75);
+    z-index: 80;
+    display: flex; align-items: flex-end;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.18s ease;
+  }
+  .modal-overlay.open{ opacity: 1; pointer-events: auto; }
+  .modal-sheet{
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    background: var(--bg-raised);
+    border-top: 1px solid var(--frame-border);
+    border-radius: 12px 12px 0 0;
+    padding: 22px 22px calc(26px + env(safe-area-inset-bottom, 0px));
+    transform: translateY(20px);
+    transition: transform 0.18s ease;
+  }
+  .modal-overlay.open .modal-sheet{ transform: translateY(0); }
+  .modal-sheet h3{
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 500;
+    font-size: 19px;
+    margin: 0 0 14px;
+  }
+  .field{ margin-bottom: 12px; }
+  .field label{
+    display: block;
+    font-size: 11.5px;
+    color: var(--sage);
+    margin-bottom: 5px;
+  }
+  .field input, .field textarea, .field select{
+    width: 100%;
+    background: var(--frame);
+    border: 1px solid var(--frame-border);
+    color: var(--paper);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    padding: 10px 11px;
+    border-radius: 4px;
+    resize: none;
+  }
+  .field textarea{ min-height: 60px; }
+  .modal-actions{
+    display: flex; gap: 10px; margin-top: 16px;
+  }
+  .modal-actions button{
+    flex: 1;
+    font-family: 'Inter', sans-serif;
+    font-size: 13.5px;
+    font-weight: 500;
+    padding: 11px 0;
+    border-radius: 4px;
+    border: 1px solid var(--frame-border);
+  }
+  .btn-primary{
+    background: var(--safelight);
+    color: var(--paper);
+    border-color: var(--safelight) !important;
+  }
+  .btn-secondary{
+    background: transparent;
+    color: var(--paper-dim);
+  }
+  .hint{ font-size: 11px; color: var(--paper-dim); margin-top: -6px; margin-bottom: 12px; }
+
+  .toast{
+    position: fixed;
+    left: 50%; bottom: 130px;
+    transform: translateX(-50%) translateY(10px);
+    background: var(--bg-raised);
+    border: 1px solid var(--frame-border);
+    color: var(--paper);
+    font-size: 12.5px;
+    padding: 9px 16px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: all 0.2s ease;
+    pointer-events: none;
+    z-index: 90;
+    max-width: 80%;
+    text-align: center;
+  }
+  .toast.show{ opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header>
+    <h1 id="headerTitle">Contact Sheet</h1>
+    <p id="headerSub">A running roll of what caught your eye — <span class="count" id="countLabel">0 frames</span></p>
+  </header>
+
+  <main>
+    <div class="view active" id="rollView">
+      <div class="grid" id="grid"></div>
+      <div class="empty" id="emptyState" style="display:none;">
+        <div class="glyph">◐</div>
+        <p>No frames developed yet.<br>Tap the <span class="accent">shutter</span> below to load your first roll.</p>
+      </div>
+    </div>
+
+    <div class="view" id="auctionsView">
+      <div class="auction-list" id="auctionList"></div>
+      <div class="empty" id="auctionEmpty" style="display:none;">
+        <div class="glyph">◑</div>
+        <p>No lots up yet.<br>Identify a photo in your <span class="accent">Roll</span> and list it for auction.</p>
+      </div>
+    </div>
+  </main>
+
+  <div class="shutter-wrap" id="shutterWrap">
+    <div class="shutter" id="shutterBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#1a1512" stroke-width="2">
+        <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+        <circle cx="12" cy="13" r="3.5"/>
+      </svg>
+    </div>
+  </div>
+  <input type="file" id="fileInput" accept="image/*" capture="environment" multiple>
+
+  <nav class="tabbar">
+    <button class="tab active" id="tabRoll" data-tab="roll"><span class="icon">▤</span>Roll</button>
+    <button class="tab" id="tabAuctions" data-tab="auctions"><span class="icon">◈</span>Auctions</button>
+  </nav>
+</div>
+
+<div class="lightbox" id="lightbox">
+  <div class="lightbox-top">
+    <span class="meta" id="lightboxMeta">frame 01</span>
+    <button id="closeLightbox">close</button>
+  </div>
+  <div class="lightbox-img-wrap">
+    <img id="lightboxImg" src="" alt="">
+  </div>
+  <div class="caption-area" id="captionArea"></div>
+  <div class="lightbox-bottom">
+    <button class="identify-btn" id="identifyBtn">identify what's in this</button>
+    <button class="list-btn" id="listBtn">list for auction</button>
+    <button class="delete-btn" id="deleteBtn">remove</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-sheet" id="modalSheet"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const grid = document.getElementById('grid');
+const emptyState = document.getElementById('emptyState');
+const countLabel = document.getElementById('countLabel');
+const fileInput = document.getElementById('fileInput');
+const shutterBtn = document.getElementById('shutterBtn');
+const shutterWrap = document.getElementById('shutterWrap');
+const lightbox = document.getElementById('lightbox');
+const lightboxImg = document.getElementById('lightboxImg');
+const lightboxMeta = document.getElementById('lightboxMeta');
+const closeLightbox = document.getElementById('closeLightbox');
+const deleteBtn = document.getElementById('deleteBtn');
+const identifyBtn = document.getElementById('identifyBtn');
+const listBtn = document.getElementById('listBtn');
+const captionArea = document.getElementById('captionArea');
+const toastEl = document.getElementById('toast');
+const headerTitle = document.getElementById('headerTitle');
+const headerSub = document.getElementById('headerSub');
+const rollView = document.getElementById('rollView');
+const auctionsView = document.getElementById('auctionsView');
+const auctionList = document.getElementById('auctionList');
+const auctionEmpty = document.getElementById('auctionEmpty');
+const tabRoll = document.getElementById('tabRoll');
+const tabAuctions = document.getElementById('tabAuctions');
+const modalOverlay = document.getElementById('modalOverlay');
+const modalSheet = document.getElementById('modalSheet');
+
+let photos = []; // { id, dataUrl, ts, caption }
+let auctions = []; // { id, itemName, description, dataUrl, startingBid, currentBid, currentBidder, currentBidderZip, currentShipEstimate, bidCount, endsAt, sellerName, shipFromZip, weightLbs, createdAt, closed }
+let activeId = null;
+let displayName = null;
+let displayZip = null;
+let currentTab = 'roll';
+let tickHandle = null;
+const zipCoordCache = {};
+
+function showToast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  setTimeout(() => toastEl.classList.remove('show'), 2200);
+}
+
+function formatDate(ts){
+  const d = new Date(ts);
+  return d.toLocaleDateString(undefined, { month:'short', day:'numeric' }) + ' · ' +
+         d.toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' });
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str == null ? '' : str;
+  return div.innerHTML;
+}
+
+/* ---------------- Tabs ---------------- */
+function switchTab(tab){
+  currentTab = tab;
+  rollView.classList.toggle('active', tab === 'roll');
+  auctionsView.classList.toggle('active', tab === 'auctions');
+  tabRoll.classList.toggle('active', tab === 'roll');
+  tabAuctions.classList.toggle('active', tab === 'auctions');
+  shutterWrap.style.display = tab === 'roll' ? 'flex' : 'none';
+  if (tab === 'roll'){
+    headerTitle.textContent = 'Contact Sheet';
+    headerSub.innerHTML = 'A running roll of what caught your eye — <span class="count" id="countLabel">' + photos.length + (photos.length===1?' frame':' frames') + '</span>';
+  } else {
+    headerTitle.textContent = 'Auction House';
+    headerSub.innerHTML = 'Items pulled from the roll, open for bids';
+    renderAuctions();
+  }
+}
+tabRoll.addEventListener('click', () => switchTab('roll'));
+tabAuctions.addEventListener('click', () => switchTab('auctions'));
+
+/* ---------------- Roll rendering ---------------- */
+function render(){
+  grid.innerHTML = '';
+  if (photos.length === 0){
+    emptyState.style.display = 'block';
+  } else {
+    emptyState.style.display = 'none';
+    photos.forEach((p, i) => {
+      const frame = document.createElement('div');
+      frame.className = 'frame';
+      frame.innerHTML = `<img src="${p.dataUrl}" loading="lazy"><span class="num">${String(i+1).padStart(2,'0')}</span>`;
+      frame.addEventListener('click', () => openLightbox(p.id));
+      grid.appendChild(frame);
+    });
+  }
+  const cl = document.getElementById('countLabel');
+  if (cl) cl.textContent = photos.length + (photos.length === 1 ? ' frame' : ' frames');
+}
+
+function renderCaption(p){
+  if (p.caption){
+    captionArea.innerHTML = `<p class="tag-label">identified</p><p>${escapeHtml(p.caption)}</p>`;
+  } else {
+    captionArea.innerHTML = '';
+  }
+}
+
+function openLightbox(id){
+  const p = photos.find(x => x.id === id);
+  if (!p) return;
+  activeId = id;
+  lightboxImg.src = p.dataUrl;
+  const idx = photos.findIndex(x => x.id === id);
+  lightboxMeta.textContent = `frame ${String(idx+1).padStart(2,'0')} · ${formatDate(p.ts)}`;
+  renderCaption(p);
+  identifyBtn.disabled = false;
+  identifyBtn.textContent = p.caption ? 're-identify' : "identify what's in this";
+  lightbox.classList.add('open');
+}
+
+closeLightbox.addEventListener('click', () => {
+  lightbox.classList.remove('open');
+  activeId = null;
+});
+
+deleteBtn.addEventListener('click', async () => {
+  if (!activeId) return;
+  const id = activeId;
+  photos = photos.filter(p => p.id !== id);
+  lightbox.classList.remove('open');
+  render();
+  try { await window.storage.delete('photo:' + id, false); } catch(e){ console.error(e); }
+  showToast('Removed from roll');
+});
+
+shutterBtn.addEventListener('click', () => fileInput.click());
+
+fileInput.addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files || []);
+  if (files.length === 0) return;
+  let added = 0;
+  for (const file of files){
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      const id = 'p' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
+      const ts = Date.now();
+      const record = { id, dataUrl, ts };
+      photos.push(record);
+      await window.storage.set('photo:' + id, JSON.stringify({ dataUrl, ts }), false);
+      added++;
+    } catch(err){ console.error('upload failed', err); }
+  }
+  render();
+  if (added > 0) showToast(added === 1 ? 'Frame added' : added + ' frames added');
+  else showToast('Could not save — try again');
+  fileInput.value = '';
+});
+
+function fileToDataUrl(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function loadPhotos(){
+  try {
+    const listRes = await window.storage.list('photo:', false);
+    const keys = (listRes && listRes.keys) || [];
+    const loaded = [];
+    for (const key of keys){
+      try {
+        const res = await window.storage.get(key, false);
+        if (res && res.value){
+          const parsed = JSON.parse(res.value);
+          loaded.push({ id: key.replace('photo:', ''), dataUrl: parsed.dataUrl, ts: parsed.ts, caption: parsed.caption || null });
+        }
+      } catch(e){ /* skip broken entries */ }
+    }
+    loaded.sort((a,b) => a.ts - b.ts);
+    photos = loaded;
+  } catch(e){ console.error('load failed', e); }
+  render();
+}
+
+/* ---------------- Identify (vision) ---------------- */
+identifyBtn.addEventListener('click', async () => {
+  if (!activeId) return;
+  const p = photos.find(x => x.id === activeId);
+  if (!p) return;
+
+  identifyBtn.disabled = true;
+  identifyBtn.textContent = 'looking…';
+
+  try {
+    const match = p.dataUrl.match(/^data:(image\/[a-zA-Z]+);base64,(.*)$/);
+    if (!match) throw new Error('unsupported image format');
+    const mediaType = match[1];
+    const base64Data = match[2];
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 300,
+        messages: [{
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: mediaType, data: base64Data } },
+            { type: "text", text: "Identify what's in this photo. Be specific and concise: name the main subject(s), notable objects, and setting, in 2-3 short sentences. No preamble." }
+          ]
+        }]
+      })
+    });
+
+    if (!response.ok) throw new Error('API returned ' + response.status);
+    const data = await response.json();
+    const caption = (data.content || [])
+      .map(block => block.type === 'text' ? block.text : '')
+      .join(' ')
+      .trim();
+
+    if (!caption) throw new Error('empty response');
+
+    p.caption = caption;
+    renderCaption(p);
+    await window.storage.set('photo:' + p.id, JSON.stringify({ dataUrl: p.dataUrl, ts: p.ts, caption }), false);
+    showToast('Identified');
+  } catch (err) {
+    console.error('identify failed', err);
+    showToast("Couldn't identify — try again");
+  } finally {
+    identifyBtn.disabled = false;
+    identifyBtn.textContent = p.caption ? 're-identify' : "identify what's in this";
+  }
+});
+
+/* ---------------- Display name + zip (shared identity for bidding/selling) ---------------- */
+async function loadDisplayName(){
+  try {
+    const res = await window.storage.get('profile:name', false);
+    if (res && res.value) displayName = res.value;
+  } catch(e){ /* not set yet */ }
+  try {
+    const res = await window.storage.get('profile:zip', false);
+    if (res && res.value) displayZip = res.value;
+  } catch(e){ /* not set yet */ }
+}
+
+function isValidZip(z){
+  return /^\d{5}$/.test((z || '').trim());
+}
+
+async function getZipCoords(zip){
+  if (zipCoordCache[zip]) return zipCoordCache[zip];
+  const res = await fetch('https://api.zippopotam.us/us/' + zip);
+  if (!res.ok) throw new Error('zip lookup failed');
+  const data = await res.json();
+  const place = data.places && data.places[0];
+  if (!place) throw new Error('zip not found');
+  const coords = { lat: parseFloat(place.latitude), lon: parseFloat(place.longitude) };
+  zipCoordCache[zip] = coords;
+  return coords;
+}
+
+function haversineMiles(lat1, lon1, lat2, lon2){
+  const R = 3958.8;
+  const toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function estimateShippingCost(distanceMiles, weightLbs){
+  const w = weightLbs && weightLbs > 0 ? weightLbs : 2;
+  if (distanceMiles <= 0){
+    return Math.max(4, 3 + w * 0.6);
+  }
+  const base = 6.5;
+  const distanceComponent = distanceMiles * 0.03;
+  const weightComponent = w * 0.9;
+  const cost = base + distanceComponent + weightComponent;
+  return Math.max(5, Math.min(cost, 95));
+}
+
+// Returns { cost, distanceMiles, estimated: true, fallback?: true }
+async function calcShipping(fromZip, toZip, weightLbs){
+  try {
+    const [from, to] = await Promise.all([getZipCoords(fromZip), getZipCoords(toZip)]);
+    const distanceMiles = haversineMiles(from.lat, from.lon, to.lat, to.lon);
+    return { cost: estimateShippingCost(distanceMiles, weightLbs), distanceMiles: Math.round(distanceMiles) };
+  } catch(e){
+    // fallback: flat weight-based estimate if zip lookup fails (offline, bad zip, etc.)
+    return { cost: estimateShippingCost(300, weightLbs), distanceMiles: null, fallback: true };
+  }
+}
+
+function ensureName(callback){
+  ensureProfile(callback);
+}
+
+function ensureProfile(callback){
+  if (displayName && displayZip){ callback(); return; }
+  openModal(`
+    <h3>Quick setup</h3>
+    <div class="field">
+      <label>Display name</label>
+      <input type="text" id="nameInput" placeholder="e.g. Sam K." maxlength="24" value="${escapeHtml(displayName || '')}">
+    </div>
+    <div class="field">
+      <label>Your zip code</label>
+      <input type="text" id="zipInput" placeholder="e.g. 06095" maxlength="5" inputmode="numeric" value="${escapeHtml(displayZip || '')}">
+    </div>
+    <p class="hint">Used to attribute listings/bids and to estimate shipping distance. Visible to anyone using this app.</p>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="nameCancel">Cancel</button>
+      <button class="btn-primary" id="nameSave">Save</button>
+    </div>
+  `);
+  document.getElementById('nameCancel').addEventListener('click', closeModal);
+  document.getElementById('nameSave').addEventListener('click', async () => {
+    const val = document.getElementById('nameInput').value.trim();
+    const zip = document.getElementById('zipInput').value.trim();
+    if (!val){ showToast('Enter a name first'); return; }
+    if (!isValidZip(zip)){ showToast('Enter a valid 5-digit zip'); return; }
+    displayName = val;
+    displayZip = zip;
+    try {
+      await window.storage.set('profile:name', val, false);
+      await window.storage.set('profile:zip', zip, false);
+    } catch(e){ console.error(e); }
+    closeModal();
+    callback();
+  });
+}
+
+/* ---------------- Modal helpers ---------------- */
+function openModal(html){
+  modalSheet.innerHTML = html;
+  modalOverlay.classList.add('open');
+}
+function closeModal(){
+  modalOverlay.classList.remove('open');
+  modalSheet.innerHTML = '';
+}
+modalOverlay.addEventListener('click', (e) => {
+  if (e.target === modalOverlay) closeModal();
+});
+
+/* ---------------- Listing an item ---------------- */
+listBtn.addEventListener('click', () => {
+  if (!activeId) return;
+  const p = photos.find(x => x.id === activeId);
+  if (!p) return;
+  ensureName(() => openListModal(p));
+});
+
+function openListModal(p){
+  const suggestedTitle = p.caption ? p.caption.split(/[.,]/)[0].slice(0, 46) : 'Untitled item';
+  openModal(`
+    <h3>List this for auction</h3>
+    <div class="field">
+      <label>Title</label>
+      <input type="text" id="listTitle" value="${escapeHtml(suggestedTitle)}" maxlength="60">
+    </div>
+    <div class="field">
+      <label>Description</label>
+      <textarea id="listDesc">${escapeHtml(p.caption || '')}</textarea>
+    </div>
+    <div class="field">
+      <label>Starting bid ($)</label>
+      <input type="number" id="listStart" min="1" step="1" value="10">
+    </div>
+    <div class="field">
+      <label>Ships from zip code</label>
+      <input type="text" id="listZip" maxlength="5" inputmode="numeric" value="${escapeHtml(displayZip || '')}">
+    </div>
+    <div class="field">
+      <label>Approx. package weight (lbs)</label>
+      <input type="number" id="listWeight" min="0.1" step="0.5" value="2">
+    </div>
+    <div class="field">
+      <label>Auction length</label>
+      <select id="listDuration">
+        <option value="1">1 hour</option>
+        <option value="6">6 hours</option>
+        <option value="24" selected>24 hours</option>
+        <option value="72">3 days</option>
+      </select>
+    </div>
+    <p class="hint">This is a simulated auction — bids are numbers only, no real payment happens. Shipping shown to bidders is an estimate based on distance and weight, not a live carrier rate. Visible to anyone using this app.</p>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="listCancel">Cancel</button>
+      <button class="btn-primary" id="listPublish">Publish lot</button>
+    </div>
+  `);
+  document.getElementById('listCancel').addEventListener('click', closeModal);
+  document.getElementById('listPublish').addEventListener('click', async () => {
+    const title = document.getElementById('listTitle').value.trim();
+    const desc = document.getElementById('listDesc').value.trim();
+    const startingBid = parseFloat(document.getElementById('listStart').value);
+    const shipFromZip = document.getElementById('listZip').value.trim();
+    const weightLbs = parseFloat(document.getElementById('listWeight').value) || 2;
+    const hours = parseFloat(document.getElementById('listDuration').value);
+    if (!title){ showToast('Give it a title'); return; }
+    if (!startingBid || startingBid <= 0){ showToast('Enter a valid starting bid'); return; }
+    if (!isValidZip(shipFromZip)){ showToast('Enter a valid 5-digit ship-from zip'); return; }
+
+    const id = 'a' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
+    const record = {
+      id, itemName: title, description: desc, dataUrl: p.dataUrl,
+      startingBid, currentBid: startingBid, currentBidder: null, currentBidderZip: null, currentShipEstimate: null,
+      bidCount: 0, sellerName: displayName, shipFromZip, weightLbs, createdAt: Date.now(),
+      endsAt: Date.now() + hours * 3600 * 1000, closed: false
+    };
+    try {
+      await window.storage.set('auction:' + id, JSON.stringify(record), true);
+      auctions.push(record);
+      closeModal();
+      showToast('Lot published to Auctions');
+      switchTab('auctions');
+    } catch(e){
+      console.error('list failed', e);
+      showToast('Could not publish — try again');
+    }
+  });
+}
+
+/* ---------------- Auctions rendering ---------------- */
+function timeLeftLabel(endsAt){
+  const ms = endsAt - Date.now();
+  if (ms <= 0) return null;
+  const mins = Math.floor(ms / 60000);
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h >= 24){
+    const d = Math.floor(h / 24);
+    return d + 'd ' + (h % 24) + 'h left';
+  }
+  if (h > 0) return h + 'h ' + m + 'm left';
+  return m + 'm left';
+}
+
+function renderAuctions(){
+  const sorted = [...auctions].sort((a,b) => {
+    const aEnded = a.endsAt <= Date.now();
+    const bEnded = b.endsAt <= Date.now();
+    if (aEnded !== bEnded) return aEnded ? 1 : -1;
+    return a.endsAt - b.endsAt;
+  });
+
+  if (sorted.length === 0){
+    auctionEmpty.style.display = 'block';
+    auctionList.innerHTML = '';
+    return;
+  }
+  auctionEmpty.style.display = 'none';
+
+  auctionList.innerHTML = sorted.map(a => {
+    const ended = a.endsAt <= Date.now();
+    const label = ended
+      ? (a.bidCount > 0 ? `Won by ${escapeHtml(a.currentBidder)}` : 'Ended · no bids')
+      : timeLeftLabel(a.endsAt);
+    const shipLine = a.currentShipEstimate != null
+      ? ` · ~$${a.currentShipEstimate.toFixed(2)} shipping to leader`
+      : '';
+    return `
+      <div class="lot" data-id="${a.id}">
+        <img src="${a.dataUrl}">
+        <div class="lot-body">
+          <p class="lot-title">${escapeHtml(a.itemName)}</p>
+          <p class="lot-desc">${escapeHtml(a.description || 'No description')}</p>
+          <div class="lot-row">
+            <div class="lot-bid">
+              <span class="amt">$${a.currentBid.toFixed(2)}</span> · ${a.bidCount} bid${a.bidCount===1?'':'s'}${shipLine}
+              <div class="lot-meta ${ended ? 'lot-ended' : ''}">${label} · ships from ${escapeHtml(a.shipFromZip || '—')} · listed by ${escapeHtml(a.sellerName)}</div>
+            </div>
+            <button class="bid-now-btn" data-bid="${a.id}" ${ended ? 'disabled' : ''}>${ended ? 'Ended' : 'Bid'}</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  auctionList.querySelectorAll('[data-bid]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.disabled) return;
+      const id = btn.getAttribute('data-bid');
+      const a = auctions.find(x => x.id === id);
+      if (a) ensureName(() => openBidModal(a));
+    });
+  });
+}
+
+function openBidModal(a){
+  const minBid = (a.currentBid + (a.bidCount === 0 ? 0 : 1)).toFixed(2);
+  openModal(`
+    <h3>${escapeHtml(a.itemName)}</h3>
+    <p class="hint" style="margin-bottom:14px;">Current bid is <strong>$${a.currentBid.toFixed(2)}</strong>${a.bidCount>0 ? ' by ' + escapeHtml(a.currentBidder) : ' (starting bid)'}. Ships from ${escapeHtml(a.shipFromZip || '—')}.</p>
+    <div class="field">
+      <label>Your bid ($, min $${minBid})</label>
+      <input type="number" id="bidAmount" min="${minBid}" step="1" value="${minBid}">
+    </div>
+    <div class="field">
+      <label>Ship to zip code</label>
+      <input type="text" id="bidZip" maxlength="5" inputmode="numeric" value="${escapeHtml(displayZip || '')}">
+    </div>
+    <p class="hint" id="shipEstimateLine">Estimating shipping…</p>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="bidCancel">Cancel</button>
+      <button class="btn-primary" id="bidSubmit">Place bid</button>
+    </div>
+  `);
+
+  let lastShipEstimate = null;
+  const shipLine = document.getElementById('shipEstimateLine');
+  const zipInput = document.getElementById('bidZip');
+
+  async function refreshShipEstimate(){
+    const zip = zipInput.value.trim();
+    if (!isValidZip(zip)){
+      lastShipEstimate = null;
+      shipLine.textContent = 'Enter a valid 5-digit zip to estimate shipping.';
+      return;
+    }
+    if (!isValidZip(a.shipFromZip)){
+      lastShipEstimate = null;
+      shipLine.textContent = "Seller didn't provide a valid ship-from zip — shipping can't be estimated.";
+      return;
+    }
+    shipLine.textContent = 'Estimating shipping…';
+    try {
+      const result = await calcShipping(a.shipFromZip, zip, a.weightLbs);
+      lastShipEstimate = result;
+      const distText = result.fallback ? '' : ` (~${result.distanceMiles} mi)`;
+      shipLine.innerHTML = `Estimated shipping to ${escapeHtml(zip)}: <strong>$${result.cost.toFixed(2)}</strong>${distText} — approximate, not a live carrier rate.`;
+    } catch(e){
+      lastShipEstimate = null;
+      shipLine.textContent = "Couldn't estimate shipping right now.";
+    }
+  }
+  refreshShipEstimate();
+  zipInput.addEventListener('blur', refreshShipEstimate);
+
+  document.getElementById('bidCancel').addEventListener('click', closeModal);
+  document.getElementById('bidSubmit').addEventListener('click', async () => {
+    const amount = parseFloat(document.getElementById('bidAmount').value);
+    const zip = zipInput.value.trim();
+    if (!amount || amount < parseFloat(minBid)){
+      showToast('Bid must be at least $' + minBid);
+      return;
+    }
+    if (!isValidZip(zip)){
+      showToast('Enter a valid 5-digit ship-to zip');
+      return;
+    }
+    if (!lastShipEstimate){
+      await refreshShipEstimate();
+    }
+    try {
+      // re-read latest state to reduce (not eliminate) race conditions
+      const fresh = await window.storage.get('auction:' + a.id, true);
+      const latest = fresh && fresh.value ? JSON.parse(fresh.value) : a;
+      if (latest.endsAt <= Date.now()){ showToast('This auction just ended'); closeModal(); renderAuctions(); return; }
+      if (amount <= latest.currentBid && latest.bidCount > 0){ showToast('Someone else already bid higher'); return; }
+      latest.currentBid = amount;
+      latest.currentBidder = displayName;
+      latest.currentBidderZip = zip;
+      latest.currentShipEstimate = lastShipEstimate ? lastShipEstimate.cost : null;
+      latest.bidCount = (latest.bidCount || 0) + 1;
+      await window.storage.set('auction:' + a.id, JSON.stringify(latest), true);
+      const idx = auctions.findIndex(x => x.id === a.id);
+      if (idx > -1) auctions[idx] = latest;
+      closeModal();
+      const totalMsg = lastShipEstimate ? ` (+ ~$${lastShipEstimate.cost.toFixed(2)} shipping)` : '';
+      showToast('Bid placed' + totalMsg);
+      renderAuctions();
+    } catch(e){
+      console.error('bid failed', e);
+      showToast('Could not place bid — try again');
+    }
+  });
+}
+
+async function loadAuctions(){
+  try {
+    const listRes = await window.storage.list('auction:', true);
+    const keys = (listRes && listRes.keys) || [];
+    const loaded = [];
+    for (const key of keys){
+      try {
+        const res = await window.storage.get(key, true);
+        if (res && res.value) loaded.push(JSON.parse(res.value));
+      } catch(e){ /* skip broken entries */ }
+    }
+    auctions = loaded;
+  } catch(e){ console.error('load auctions failed', e); }
+}
+
+/* ---------------- Boot ---------------- */
+async function boot(){
+  await loadDisplayName();
+  await loadPhotos();
+  await loadAuctions();
+  renderAuctions();
+  tickHandle = setInterval(() => { if (currentTab === 'auctions') renderAuctions(); }, 30000);
+}
+boot();
+</script>
+</body>
+</html>
