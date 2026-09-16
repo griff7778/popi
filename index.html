@@ -883,8 +883,8 @@ function renderGateForm(mode){
       if (data.session){
         await completeSignIn(data.user);
       } else {
+        renderGateForm('in');
         setGateNotice('Account created — check your email to confirm, then sign in.');
-        btn.disabled = false; btn.textContent = 'Create account';
       }
     });
   }
